@@ -6,6 +6,37 @@ namespace ray {
     {
         Vector3D x = x0, v = v0;
         double tau = 0, r = rtOpts.dist(x), rmin;
+
+        auto [n1, gradn] = rtOpts.gradN(x, r);
+        rmin = r;
+
+        do{
+            // integrate position
+            x += (rtOpts.dt*n1)*v;
+            r = rtOpts.dist(x);
+            if(r < rmin) rmin = r;
+
+            // integrate velocity
+            auto [n1, gradn] = rtOpts.gradN(x, r);
+            v += (rtOpts.dt*sqr(n1))*(gradn - (v*gradn)*v);
+
+            // integrate optical depth
+            tau += (rtOpts.dt*n1)*rtOpts.optDepth(x, r);
+
+            if(rtOpts.destroy(x, r)){
+                tau = nb::inf;
+                break;
+            }
+
+        }while(!rtOpts.exit(x, r));
+
+        return {x, v, rmin, std::exp(-tau)};
+    }
+
+    RayTraceOutput rayTracePhase(const Vector3D& x0, const Vector3D& v0, const double& phi, const RayTraceOpts& rtOpts)
+    {
+        Vector3D x = x0, v = v0;
+        double tau = 0, r = rtOpts.dist(x), rmin;
         int i = 0;
 
         auto [n1, gradn] = rtOpts.gradN(x, r);
@@ -32,7 +63,7 @@ namespace ray {
 
         }while(!rtOpts.exit(x, r));
 
-        return {x, v, rmin, std::exp(-tau), rtOpts.phi + i*rtOpts.dp};
+        return {x, v, rmin, std::exp(-tau), phi + i*rtOpts.dp};
     }
     
     
@@ -92,7 +123,7 @@ namespace ray {
         return x0 + v0*((-c2 + ((in) ? -std::sqrt(det) : std::sqrt(det)))/c1);
     }
 
-    Vector3D ray2spherePH(const Vector3D& x0, const Vector3D& v0, double& phi, const Vector3D& Rbb, const Vector3D& cc, const double& l, const bool& in)
+    Vector3D ray2spherePhase(const Vector3D& x0, const Vector3D& v0, double& phi, const double& l, const Vector3D& Rbb, const Vector3D& cc, const bool& in)
     {
         double c1, c2, c3, det, t;
         Vector3D dx = x0 - cc;

@@ -407,7 +407,6 @@ namespace flash {
         // propagate ray through the atmosphere
         auto [x, v, rmin, T, phi] = ray::rayTrace(x0, v0, rtOpts);
         fOut.T = T;
-        fOut.phi = phi;
 
         // check if surface is hit
         if(T == 0) return fOut;
@@ -420,6 +419,50 @@ namespace flash {
         
         return fOut;
     }
+
+    FlashOutput FlashMap::propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const
+    {
+        Vector3D x0 = rtt*x0s, v0 = rtt*v0s;
+        Vector2D xy;
+        FlashOutput fOut;
+        double phiB = 0;
+
+        x0 = ray::ray2spherePhase(x0, v0, phiB, rtOpts.l, {R_atm, beta[Y], beta[Z]});
+
+        if(std::isnan(x0[X])){
+            // cast ray to the detector
+            xy = ray::rayZplane(x0s, v0s, L);
+
+            // map to the detector plane
+            map2detector(xy, fOut.i, fOut.j);
+            
+            fOut.T = 1;
+            fOut.phi = 0;
+
+            return fOut;
+        }
+
+        auto [x, v, rmin, T, phi] = ray::rayTracePhase(x0, v0, phiB, rtOpts);
+        fOut.T = T;
+
+        // check if surface is hit
+        if(T == 0) return fOut;
+
+        // cast ray to the detector
+        xy = ray::rayZplane(rti*x, rti*v, L);
+
+        // map to the detector plane
+        map2detector(xy, fOut.i, fOut.j);
+
+        // get common phase
+        ray::ray2spherePhase(x, v, phi, rtOpts.l, {0.9*L,1,1},{xy[X], xy[Y], L});
+        fOut.phi = phi;
+
+        return fOut;
+    }
+
+
+
 
     void FlashMap::map2detector(const Vector2D& xy, int& i, int& j) const
     {

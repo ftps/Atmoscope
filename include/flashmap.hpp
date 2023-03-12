@@ -27,13 +27,15 @@ namespace flash {
         double dphi_n = 1;
         double dt_n = 1;
         int multi = 0;
+        bool waveOptics = false;
         ray::RayTraceOpts rtOpts;
     };
 
     struct FlashOutput {
-        int i, j;
-        double T;
-        double phi;
+        int i = 0;
+        int j = 0;
+        double T = 0;
+        double phi = 0;
     };
 
     /*
@@ -61,8 +63,6 @@ namespace flash {
             FlashMap(const std::string& filename, const FlashOpts& fOpts);
             ~FlashMap();
 
-            void printFlashpars() const;
-            void finalData(const std::chrono::duration<double>& interval) const;
             void plotMap(const std::string& filename = "", const bool& logScale = false) const;
 
             void setPosition(const double& lon, const double& lat);
@@ -70,20 +70,26 @@ namespace flash {
 
             void operator()();
 
+            // set public for testing
+            FlashOutput propagateRay(const Vector3D& x0s, const Vector3D& v0s) const;
+            FlashOutput propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const;
+
+        private:
+            void printFlashpars() const;
+            void finalData(const std::chrono::duration<double>& interval) const;
+
             void singleMap();
             void multiMap();
 
-            FlashOutput propagateRay(const Vector3D& x0s, const Vector3D& v0s) const;
             void map2detector(const Vector2D& xy, int& i, int& j) const;
-
             Vector2D getStartingRadius();
             inline int squareIntersect(const int& i1, const int& j1, const int& i2, const int& j2) const;
             inline void singleLoop(fmap& m, const double& cp, const double& sp, const double& rs, const bool& down) const;
             void mapThread(fmap& m, const double& phi_s, const double& phi_e, const Vector2D& rs, const int& iThread) const;
 
-        private:
             double dphi, dr;
             const Vector3D v0 = Vector3D({0,0,1});
+            Vmap<complex> phaseMap;
     };
 };
 
