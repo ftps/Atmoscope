@@ -1,0 +1,8 @@
+Results/*
+*.py
+*.o
+exe
+.vscode
+Atmospheric_Turbulence/exe
+Atmospheric_Turbulence/aux.dat
+*.png
