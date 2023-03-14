@@ -318,7 +318,7 @@ namespace flash {
 
         std::cout << "Starting Threads . . .\n" << std::endl;
         for(uint i = 0; i < NTHREAD; ++i){
-            threads.push_back(std::thread([&, i]{this->mapThread(map_t[i], i*dphi_t, (i+1)*dphi_t, rs, i+1); }));
+            threads.push_back(std::thread([&, i]{this->mapThread<double>(map_t[i], i*dphi_t, (i+1)*dphi_t, rs, i+1); }));
         }
 
         for(std::thread& t : threads){
@@ -381,15 +381,21 @@ namespace flash {
     }
 
 
-
+    template<typename U>
     FlashOutput FlashMap::propagateRay(const Vector3D& x0s, const Vector3D& v0s) const
     {
         Vector3D x0 = rtt*x0s, v0 = rtt*v0s;
         Vector2D xy;
         FlashOutput fOut;
+        double phiB = 0;
 
         // cast ray to the atmosphere sphere
-        x0 = ray::ray2sphere(x0, v0, {R_atm, beta[Y], beta[Z]});
+        if (std::is_same<U, complex>::value) {
+            x0 = ray::ray2spherePhase(x0, v0, phiB, rtOpts.l, {R_atm, beta[Y], beta[Z]});
+        }
+        else {
+            x0 = ray::ray2sphere(x0, v0, {R_atm, beta[Y], beta[Z]});
+        }
 
         if(std::isnan(x0[X])){
             // cast ray to the detector
@@ -416,11 +422,17 @@ namespace flash {
 
         // map to the detector plane
         map2detector(xy, fOut.i, fOut.j);
+
+        // get common phase if wave optics
+        if  (std::is_same<U, complex>::value) {
+            ray::ray2spherePhase(x, v, phi, rtOpts.l, {0.9*L,1,1},{xy[X], xy[Y], L});
+            fOut.phi = phi;
+        }
         
         return fOut;
     }
 
-    FlashOutput FlashMap::propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const
+    /*FlashOutput FlashMap::propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const
     {
         Vector3D x0 = rtt*x0s, v0 = rtt*v0s;
         Vector2D xy;
@@ -442,6 +454,7 @@ namespace flash {
             return fOut;
         }
 
+        // propagate ray through the atmosphere
         auto [x, v, rmin, T, phi] = ray::rayTracePhase(x0, v0, phiB, rtOpts);
         fOut.T = T;
 
@@ -459,7 +472,7 @@ namespace flash {
         fOut.phi = phi;
 
         return fOut;
-    }
+    }*/
 
 
 
@@ -503,7 +516,7 @@ namespace flash {
 
         for(luint k = 0; k < 2; ++k){
             Vector3D x0 = Vector3D({r_s[k]*std::cos(p_s[k]), r_s[k]*std::sin(p_s[k]), -2*R});
-            auto [i0, j0, TT, PHI] = propagateRay(x0, v0);
+            auto [i0, j0, TT, PHI] = propagateRay<double>(x0, v0);
 
             // check location of the initial guess
             // in the detector plane, move to the outside
@@ -525,7 +538,7 @@ namespace flash {
 
             for(double r = r_s[k] + drn; r > R; r += drn){
                 x0 = Vector3D({r*std::cos(p_s[k]), r*std::sin(p_s[k]), -2*R});
-                auto [i,j,TT1,PHI1] = propagateRay(x0, v0);
+                auto [i,j,TT1,PHI1] = propagateRay<double>(x0, v0);
 
                 if((i < 0 || j < 0 || i >= (int)N || j >= (int)N) == tf){
                     if(otherside){
@@ -600,7 +613,8 @@ namespace flash {
         return -1;
     }
 
-    inline void FlashMap::singleLoop(fmap& m, const double& cp, const double& sp, const double& rs, const bool& down) const
+    template<typename U>
+    inline void FlashMap::singleLoop(fmap<U>& m, const double& cp, const double& sp, const double& rs, const bool& down) const
     {
         double drn = (down) ? -dr : dr;
         double dro = drn;
@@ -608,24 +622,24 @@ namespace flash {
         int aux_ij;
         Vector3D x0;
 
-        for(double r = rs; r > R; r += drn){
+        for (double r = rs; r > R; r += drn) {
             m.ntot += 1;
             x0 = Vector3D({r*cp, r*sp, -R_atm});
-            auto [i, j, T, phi_ph] = propagateRay(x0, v0);
+            auto [i, j, T, phi_ph] = propagateRay<U>(x0, v0);
             if(T == 0) break;
-            else if(i < 0 || j < 0 || i >= (int)N || j >= (int)N){
-                if(inside){
+            else if (i < 0 || j < 0 || i >= (int)N || j >= (int)N) {
+                if(inside) {
                     break;
                 }
                 continue;
                 // dirty tricks to accelerate convergence
-                if((aux_ij = std::abs(i - (int)N/2) + std::abs(j - (int)N/2)) > (int)(1000*N)){
+                if ((aux_ij = std::abs(i - (int)N/2) + std::abs(j - (int)N/2)) > (int)(1000*N)) {
                     drn = 10000*(dro);
                 }
-                else if(aux_ij > (int)(100*N)){
+                else if (aux_ij > (int)(100*N)) {
                     drn = 1000*(dro);
                 }
-                else if(aux_ij > (int)N){
+                else if (aux_ij > (int)N) {
                     drn = 100*(dro);
                 }
                 else{
@@ -633,13 +647,26 @@ namespace flash {
                 }
             }
             inside = true;
-            m.at(i).at(j) += T;
+            add2map(m, T, phi_ph, i, j);
             m.A += dr*r*dphi;
             m.n += 1;
         }
     }
 
-    void FlashMap::mapThread(fmap& m, const double& phi_s, const double& phi_e, const Vector2D& rs, const int& iThread) const
+    template<>
+    inline void FlashMap::add2map<double>(fmap<double>& m, const double& T, const double& phi, const int& i, const int& j)
+    {
+        m[i][j] += T;
+    }
+
+    template<>
+    inline void FlashMap::add2map<complex>(fmap<complex>& m, const double& T, const double& phi, const int& i, const int& j)
+    {
+        m[i][j] += T*std::exp(complex(0, phi));
+    }
+
+    template <typename U>
+    void FlashMap::mapThread(fmap<U>& m, const double& phi_s, const double& phi_e, const Vector2D& rs, const int& iThread) const
     {
         double cp, sp, rss;
         uint icur = 0;
@@ -660,23 +687,23 @@ namespace flash {
                 icur += 10;
             }
             m.ntot += 1;
-            auto [i, j, T, phi_p] = propagateRay(Vector3D({rss*cp, rss*sp, -R_atm}), v0);
+            auto [i, j, T, phi_p] = propagateRay<double>(Vector3D({rss*cp, rss*sp, -R_atm}), v0);
             if(i < 0 || j < 0 || i >= (int)N || j >= (int)N){
                 //LOG
                 m.ntot += 1;
-                auto [i2, j2, T, phi_p] = propagateRay(Vector3D({(rss+30*dr)*cp, (rss + 30*dr)*sp, -R_atm}), v0);
+                auto [i2, j2, T, phi_p] = propagateRay<double>(Vector3D({(rss+30*dr)*cp, (rss + 30*dr)*sp, -R_atm}), v0);
 
                 if(i2 < 0 || j2 < 0 || i2 >= (int)N || j2 >= (int)N){
                     if((dir = squareIntersect(i, j, i2, j2)) == -1) continue;
-                    singleLoop(m, cp, sp, rss + ((dir) ? -dr : dr), dir);
+                    singleLoop<U>(m, cp, sp, rss + ((dir) ? -dr : dr), dir);
                 }
                 else{
-                    singleLoop(m, cp, sp, rss+dr, false);
+                    singleLoop<U>(m, cp, sp, rss+dr, false);
                 }
             }
             else{
-                singleLoop(m, cp, sp, rss-dr, true);
-                singleLoop(m, cp, sp, rss, false);
+                singleLoop<U>(m, cp, sp, rss-dr, true);
+                singleLoop<U>(m, cp, sp, rss, false);
             }
             
         }

@@ -70,10 +70,6 @@ namespace flash {
 
             void operator()();
 
-            // set public for testing
-            FlashOutput propagateRay(const Vector3D& x0s, const Vector3D& v0s) const;
-            FlashOutput propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const;
-
         private:
             void printFlashpars() const;
             void finalData(const std::chrono::duration<double>& interval) const;
@@ -81,15 +77,22 @@ namespace flash {
             void singleMap();
             void multiMap();
 
+            template<typename U>
+            FlashOutput propagateRay(const Vector3D& x0s, const Vector3D& v0s) const;
+            //FlashOutput propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const;
+
             void map2detector(const Vector2D& xy, int& i, int& j) const;
             Vector2D getStartingRadius();
             inline int squareIntersect(const int& i1, const int& j1, const int& i2, const int& j2) const;
-            inline void singleLoop(fmap& m, const double& cp, const double& sp, const double& rs, const bool& down) const;
-            void mapThread(fmap& m, const double& phi_s, const double& phi_e, const Vector2D& rs, const int& iThread) const;
+            template <typename U>
+            inline void singleLoop(fmap<U>& m, const double& cp, const double& sp, const double& rs, const bool& down) const;
+            template <typename U>
+            static inline void add2map(fmap<U>& m, const double& T, const double& phi, const int& i, const int& j);
+            template <typename U>
+            void mapThread(fmap<U>& m, const double& phi_s, const double& phi_e, const Vector2D& rs, const int& iThread) const;
 
             double dphi, dr;
             const Vector3D v0 = Vector3D({0,0,1});
-            Vmap<complex> phaseMap;
     };
 };
 
