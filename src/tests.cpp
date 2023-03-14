@@ -734,7 +734,7 @@ namespace turbAtmos {
 
     void testFlashMap()
     {
-        flash::FlashOpts fOpts;
+        /*flash::FlashOpts fOpts;
         fOpts.S = 201;
         fOpts.N = 201;
         fOpts.turb = true;
@@ -742,6 +742,19 @@ namespace turbAtmos {
         fOpts.lat = 45;
         //fOpts.lat = 15;
         flash::FlashMap f("Planets/Titan.dat", fOpts);
+        f();
+        f.plotMap();*/
+
+        flash::FlashOpts fOpts;
+        fOpts.S = 50;
+        fOpts.N = 201;
+        fOpts.turb = false;
+        fOpts.multi = 0;
+        fOpts.lat = 90;
+        fOpts.waveOptics = true;
+        fOpts.rtOpts.l = 1e-3;
+        //fOpts.lat = 15;
+        flash::FlashMap f("Planets/Earth.dat", fOpts);
         f();
         f.plotMap();
     }

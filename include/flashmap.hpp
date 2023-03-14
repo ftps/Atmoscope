@@ -17,7 +17,7 @@ namespace flash {
     */
 
     struct FlashOpts {
-        uint N = 250;
+        uint N = 251;
         double S = 50;
         double L = 1e8;
         double lat = 0;
@@ -47,8 +47,10 @@ namespace flash {
         public:
             fmap();
             fmap(const FlashOpts& fOpts);
-            void operator+=(const fmap& other);
+            template<typename U>
+            void operator+=(const fmap<U>& other);
             void multiAdd(const fmap& other);
+            void normalize();
             void normalize(double norm);
             double maximumVal() const;
             double maximumDist() const;
@@ -74,6 +76,7 @@ namespace flash {
             void printFlashpars() const;
             void finalData(const std::chrono::duration<double>& interval) const;
 
+            template<typename U>
             void singleMap();
             void multiMap();
 

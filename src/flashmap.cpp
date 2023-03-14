@@ -19,8 +19,8 @@ namespace flash {
         ntot = 0;
     }
 
-    template<typename T>
-    void fmap<T>::operator+=(const fmap<T>& other)
+    template<> template<>
+    void fmap<double>::operator+=(const fmap<double>& other)
     {
         for(luint i = 0; i < this->size(); ++i){
             for(luint j = 0; j < this->size(); ++j){
@@ -33,8 +33,22 @@ namespace flash {
         ntot += other.ntot;
     }
 
+    template<> template<>
+    void fmap<double>::operator+=(const fmap<complex>& other)
+    {
+        for(luint i = 0; i < this->size(); ++i){
+            for(luint j = 0; j < this->size(); ++j){
+                this->at(i)[j] += sqr(other[i][j].real()) + sqr(other[i][j]).real();
+            }
+        }
+
+        A += other.A;
+        n += other.n;
+        ntot += other.ntot;
+    }
+
     template<typename T>
-    void fmap<T>::multiAdd(const fmap& other)
+    void fmap<T>::multiAdd(const fmap<T>& other)
     {
         for(luint i = 0; i < this->size(); ++i){
             for(luint j = 0; j < this->size(); ++j){
@@ -45,6 +59,21 @@ namespace flash {
         A += other.A;
         n += other.n;
         ntot += other.ntot;
+    }
+
+    template<>
+    void fmap<double>::normalize()
+    {
+        double norm = 0;
+        double h = S/N;
+
+        for (luint i = 0; i < this->size(); ++i) {
+            for (luint j = 0; j < this->size(); ++j) {
+                norm += this->at(i)[j];
+            }
+        }
+
+        this->normalize(A/(sqr(h)*norm));
     }
 
     template<typename T>
@@ -246,30 +275,34 @@ namespace flash {
     {
         setPosition(lon, lat);
         setTurbulence(turb);
-        if(multi > 0 && turb && turbAvailable){
+        if(rtOpts.l <= 0) waveOptics = false;
+
+        if (multi > 0 && turb && turbAvailable) {
             std::cout << "Performing multiple map calculation\n";
             multiMap();
         }
-        else singleMap();
+        else if (waveOptics) singleMap<complex>();
+        else singleMap<double>();
     }
 
 
 
-    
+    template<typename U>
     void FlashMap::singleMap()
     {
         double dphi_t = 2*nb::pi/NTHREAD;
         std::vector<std::thread> threads(0);
-        std::vector<fmap> map_t(NTHREAD);
+        std::vector<fmap<U>> map_t(NTHREAD);
         Vector2D rs;
 
-        // calculate discretization of the atmosphere
+        // calculate discretization of the atmosphere and rays
         dr = dr_n*H*S/(20*N*R);
         dphi = dphi_n*2*nb::pi/(5*N);
         rtOpts.dt = dt_n*10*R/(R_std);
+        if (std::is_same<U, complex>::value) rtOpts.dp = 2*nb::pi*rtOpts.dt/rtOpts.l;
 
         // clear all auxiliary maps
-        for(fmap& m : map_t){
+        for(fmap<U>& m : map_t){
             m.N = N;
             m.S = S;
             m.L = L;
@@ -281,7 +314,7 @@ namespace flash {
             m.n = 0;
             m.ntot = 0;
             m.clear();
-            m.resize(N, std::vector<double>(N, 0));
+            m.resize(N, std::vector<U>(N, 0));
         }
 
         // clear final map
@@ -318,18 +351,19 @@ namespace flash {
 
         std::cout << "Starting Threads . . .\n" << std::endl;
         for(uint i = 0; i < NTHREAD; ++i){
-            threads.push_back(std::thread([&, i]{this->mapThread<double>(map_t[i], i*dphi_t, (i+1)*dphi_t, rs, i+1); }));
+            threads.push_back(std::thread([&, i]{this->mapThread<U>(map_t[i], i*dphi_t, (i+1)*dphi_t, rs, i+1); }));
         }
 
         for(std::thread& t : threads){
             t.join();
         }
 
-        for(const fmap& m : map_t){
+        for(const fmap<U>& m : map_t){
             (*this) += m;
         }
-
-        normalize(A*sqr(N)/(n*sqr(S)));
+        
+        if (std::is_same<U, complex>::value) normalize();
+        else normalize(A*sqr(N)/(n*sqr(S)));
         auto end = std::chrono::high_resolution_clock::now();
         finalData(end - start);
     }
@@ -337,7 +371,7 @@ namespace flash {
     void FlashMap::multiMap()
     {
         std::string header = turbMap->getHeader(), filename;
-        fmap multiAux;
+        fmap<double> multiAux;
         int k = 1;
 
         multiAux.N = N;
@@ -352,12 +386,18 @@ namespace flash {
         multiAux.clear();
         multiAux.resize(N, std::vector<double>(N, 0));
 
+        if (rtOpts.l <= 0) waveOptics = false;
+
         for(; k <= multi; ++k){
             filename = header + '_' + std::to_string(k) + ".dat";
-            if(!fs::exists(filename)) break;
+            if(!fs::exists(filename)){
+                --k;
+                break;
+            }
             turbMap->readTurbFile(filename);
             std::cout << "In file " << filename << "...\n";
-            singleMap();
+            if (waveOptics) singleMap<complex>();
+            else singleMap<double>();
             
             for(luint i = 0; i < size(); ++i){
                 for(luint j = 0; j < size(); ++j){
@@ -368,6 +408,11 @@ namespace flash {
             multiAux.A += A;
             multiAux.n += n;
             multiAux.ntot += ntot;
+        }
+
+        if (k == 0) {
+            std::cout << "No atmospheres found . . .\nExiting." << std::endl;
+            exit(-2);
         }
 
         // clear final map
@@ -675,7 +720,7 @@ namespace flash {
         //bool inside;
         if(m.size() != N){
             m.clear();
-            m.resize(N, std::vector<double>(N, 0));
+            m.resize(N, std::vector<U>(N, 0));
         }
 
         for(double phi = phi_s; phi < phi_e; phi += dphi){
