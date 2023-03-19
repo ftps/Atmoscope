@@ -44,11 +44,13 @@ namespace ray {
     // function that casts a ray to a plane normal to the z-axis
     Vector2D rayZplane(const Vector3D& x0, const Vector3D& v0, const double& z);
 
+    Vector2D rayZplanePhase(const Vector3D& x0, const Vector3D& v0, const __float128& z, double& phi, const __float128& l);
+
     // function that casts a ray to a spheroid, either the entering or exiting point
     // Rbb contains the x-radius at Rbb[X] and the beta values at Rbb[Y] and Rbb[Z]
     Vector3D ray2sphere(const Vector3D& x0, const Vector3D& v0, const Vector3D& Rbb, const Vector3D& cc = {0,0,0}, const bool& in = true);
 
-    Vector3D ray2spherePhase(const Vector3D& x0, const Vector3D& v0, double& phi, const double& l, const Vector3D& Rbb, const Vector3D& cc = {0,0,0}, const bool& in = true);
+    Vector3D ray2spherePhase(const Vector3D& x0, const Vector3D& v0, double& phi, const __float128& l, const Vector3D& Rbb, const Vector3D& cc = {0,0,0}, const bool& in = true);
 };
 
 

@@ -100,6 +100,36 @@ namespace ray {
         return res;
     }
 
+    Vector2D rayZplanePhase(const Vector3D& x0, const Vector3D& v0, const __float128& z, double& phi, const __float128& l)
+    {
+        // check if ray is parallel to the plane
+        if(v0[Z] == 0){
+            #ifndef NO_CHECKS
+                std::cout << "Warning: Ray is normal to the z-axis, no plane intersection is possible\n";
+            #endif
+            return (Vector2D){NAN,NAN};
+        }
+
+        // get time at which ray intersects with the plane
+        __float128 t = (z - (__float128)x0[Z])/(__float128)v0[Z];
+        Vector2D res;
+
+        #ifndef NO_CHECKS
+        if(t < 0){
+            std::cout << "Warning: Plane intersection lies behind the ray\n";
+        }
+        #endif
+
+        // project the ray to the XY plane Z = z
+        res[X] = x0[X] + v0[X]*t;
+        res[Y] = x0[Y] + v0[Y]*t;
+
+        // propagate the phase
+        phi += 2*nb::pi*fmodq(t/l, 1);
+
+        return res;
+    }
+
     Vector3D ray2sphere(const Vector3D& x0, const Vector3D& v0, const Vector3D& Rbb, const Vector3D& cc, const bool& in)
     {
         double c1, c2, c3, det;
@@ -123,10 +153,10 @@ namespace ray {
         return x0 + v0*((-c2 + ((in) ? -std::sqrt(det) : std::sqrt(det)))/c1);
     }
 
-    Vector3D ray2spherePhase(const Vector3D& x0, const Vector3D& v0, double& phi, const double& l, const Vector3D& Rbb, const Vector3D& cc, const bool& in)
+    Vector3D ray2spherePhase(const Vector3D& x0, const Vector3D& v0, double& phi, const __float128& l, const Vector3D& Rbb, const Vector3D& cc, const bool& in)
     {
-        double c1, c2, c3, det, t;
-        Vector3D dx = x0 - cc;
+        __float128 c1, c2, c3, det, t;
+        Vector<__float128,3> dx = {(x0[X] - cc[X]), (x0[Y] - cc[Y]), (x0[Z] - cc[Z])};
 
         // calculate coefficients of the quadratic polynomial
         c1 = sqr(v0[X]) + sqr(Rbb[Y]*v0[Y]) + sqr(Rbb[Z]*v0[Z]);
@@ -136,14 +166,14 @@ namespace ray {
         // check if the solutions are real
         if((det = sqr(c2) - c1*c3) < 0){
             #ifndef NO_CHECK
-                std::cout << (Vector3D){c1, c2, c3} << " " << det << std::endl;
+                std::cout << (Vector3D){c1, c2, c3} << " " << (double)det << std::endl;
                 std::cout << "Warning: Ray doesn't intersect with the sphere\n";
             #endif
             return (Vector3D){NAN,NAN,NAN};
         }
 
-        t = (-c2 + ((in) ? -std::sqrt(det) : std::sqrt(det)))/c1;
-        phi += 2*nb::pi/l;
+        t = (-c2 + ((in) ? -sqrtq(det) : sqrtq(det)))/c1;
+        phi += 2*nb::pi*fmodq(t/l, 1.0);
 
         return x0 + v0*t;
     }

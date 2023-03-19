@@ -19,8 +19,8 @@ namespace flash {
         ntot = 0;
     }
 
-    template<> template<>
-    void fmap<double>::operator+=(const fmap<double>& other)
+    template<typename U> template<typename T>
+    void fmap<U>::operator+=(const fmap<T>& other)
     {
         for(luint i = 0; i < this->size(); ++i){
             for(luint j = 0; j < this->size(); ++j){
@@ -38,7 +38,7 @@ namespace flash {
     {
         for(luint i = 0; i < this->size(); ++i){
             for(luint j = 0; j < this->size(); ++j){
-                this->at(i)[j] += sqr(other[i][j].real()) + sqr(other[i][j]).real();
+                this->at(i)[j] += sqr(other[i][j].real()) + sqr(other[i][j].imag());
             }
         }
 
@@ -181,6 +181,9 @@ namespace flash {
         for(const std::vector<double>& v : *this){
             for(const double& val : v){
                 fp << val << " ";
+                if(val < 0) {
+                    std::cout << "NEGATIVE VALUE FOUND: " << val << std::endl;
+                }
             }
             fp << '\n';
         }
@@ -358,12 +361,29 @@ namespace flash {
             t.join();
         }
 
-        for(const fmap<U>& m : map_t){
-            (*this) += m;
+        if(std::is_same<U, complex>::value) {
+            fmap<U> auxMap;
+            auxMap.A = 0;
+            auxMap.n = 0;
+            auxMap.ntot = 0;
+            auxMap.clear();
+            auxMap.resize(N, std::vector<U>(N, 0));
+
+            for(const fmap<U>& m : map_t){
+                auxMap += m;
+            }
+            (*this) += auxMap;
+            normalize();
+        }
+        else {
+            for(const fmap<U>& m : map_t){
+                (*this) += m;
+            }
+            normalize(A*sqr(N)/(n*sqr(S)));
         }
         
+        
         if (std::is_same<U, complex>::value) normalize();
-        else normalize(A*sqr(N)/(n*sqr(S)));
         auto end = std::chrono::high_resolution_clock::now();
         finalData(end - start);
     }
@@ -463,7 +483,9 @@ namespace flash {
         if(T == 0) return fOut;
 
         // cast ray to the detector
-        xy = ray::rayZplane(rti*x, rti*v, L);
+        x = rti*x;
+        v = rti*v;
+        xy = ray::rayZplane(x, v, L);
 
         // map to the detector plane
         map2detector(xy, fOut.i, fOut.j);
@@ -477,47 +499,6 @@ namespace flash {
         return fOut;
     }
 
-    /*FlashOutput FlashMap::propagateRayPhase(const Vector3D& x0s, const Vector3D& v0s) const
-    {
-        Vector3D x0 = rtt*x0s, v0 = rtt*v0s;
-        Vector2D xy;
-        FlashOutput fOut;
-        double phiB = 0;
-
-        x0 = ray::ray2spherePhase(x0, v0, phiB, rtOpts.l, {R_atm, beta[Y], beta[Z]});
-
-        if(std::isnan(x0[X])){
-            // cast ray to the detector
-            xy = ray::rayZplane(x0s, v0s, L);
-
-            // map to the detector plane
-            map2detector(xy, fOut.i, fOut.j);
-            
-            fOut.T = 1;
-            fOut.phi = 0;
-
-            return fOut;
-        }
-
-        // propagate ray through the atmosphere
-        auto [x, v, rmin, T, phi] = ray::rayTracePhase(x0, v0, phiB, rtOpts);
-        fOut.T = T;
-
-        // check if surface is hit
-        if(T == 0) return fOut;
-
-        // cast ray to the detector
-        xy = ray::rayZplane(rti*x, rti*v, L);
-
-        // map to the detector plane
-        map2detector(xy, fOut.i, fOut.j);
-
-        // get common phase
-        ray::ray2spherePhase(x, v, phi, rtOpts.l, {0.9*L,1,1},{xy[X], xy[Y], L});
-        fOut.phi = phi;
-
-        return fOut;
-    }*/
 
 
 

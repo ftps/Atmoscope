@@ -15,6 +15,7 @@
 #include <string>
 #include <limits>
 #include <tuple>
+#include <quadmath.h>
 
 #include <iostream>
 #include <fstream>
@@ -159,8 +160,8 @@ inline Vector<T,N> operator-=(const Vector<T,N>& l, const Vector<T,N>& r)
     return l;
 }
 
-template<typename T, luint N>
-inline Vector<T,N> operator*(const Vector<T,N>& l, const T& r)
+template<typename T, typename U, luint N>
+inline Vector<T,N> operator*(const Vector<T,N>& l, const U& r)
 {
     Vector<T,N> res;
 

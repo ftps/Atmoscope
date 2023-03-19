@@ -694,41 +694,6 @@ namespace turbAtmos {
             f.multi = 30;
             f();
             f.plotMap("Results/turbAtmos_" + pla[i] + "OblMulti.png");
-
-            /*if(i == 0){
-                Gnuplot gp;
-                auto plot = gp.plotGroup();
-                VpairXY xy1, xy2;
-                uint N = opts[i].N;
-                double S = opts[i].S;
-                double maxVal = f.maximumVal();
-
-                for(uint k = 0; k < N; ++k){
-                    xy1.emplace_back(k*S/(N-1) - S/2, f[(N-1)/2][k]);
-                }
-
-                f.turb = false;
-                //f.N = 4*N;
-                f();
-
-                N = f.N;
-                S = f.S;
-                for(uint k = 0; k < N; ++k){
-                    xy2.emplace_back((k+1)*S/N - S/2, f[(N-1)/2][k]);
-                }
-
-                plot.add_plot1d(xy1, "with lines title 'Turbulent' lw 3");
-                plot.add_plot1d(xy2, "with lines title 'Ideal' lw 3");
-
-                gp << "set terminal png size 1600,1000 enhanced font 'Verdana,30' enhanced\nset encoding utf8\n";
-                gp << "set termoption enhanced\n";
-                gp << "set output 'Results/turbAtmos_horBright.png'\n";
-                gp << "set xlabel 'x - km'\n";
-                gp << "set ylabel 'A'\n";
-                gp << "set yrange [0:" << std::to_string(3*maxVal) << "]\n";
-                gp << "set xrange [-1:1]\n";
-                gp << plot;
-            }*/
         }
     }
 
@@ -746,16 +711,17 @@ namespace turbAtmos {
         f.plotMap();*/
 
         flash::FlashOpts fOpts;
+        fOpts.L = 1e8;
         fOpts.S = 50;
-        fOpts.N = 201;
+        fOpts.N = 501;
         fOpts.turb = false;
         fOpts.multi = 0;
         fOpts.lat = 90;
         fOpts.waveOptics = true;
-        fOpts.rtOpts.l = 1e-3;
+        fOpts.rtOpts.l = 0.1;
         //fOpts.lat = 15;
         flash::FlashMap f("Planets/Earth.dat", fOpts);
         f();
-        f.plotMap();
+        f.plotMap("", true);
     }
 };
