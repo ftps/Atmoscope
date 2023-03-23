@@ -492,6 +492,7 @@ namespace flash {
 
         // get common phase if wave optics
         if  (std::is_same<U, complex>::value) {
+            phi += phiB;
             ray::ray2spherePhase(x, v, phi, rtOpts.l, {0.9*L,1,1},{xy[X], xy[Y], L});
             fOut.phi = phi;
         }

@@ -2,9 +2,8 @@
 
 int main(int argc, char* argv[])
 {
-    std::cout << "Test" << std::endl;
-    std::cout << sizeof(double) << ", " << sizeof(long double) << std::endl;
-    turbAtmos::testFlashMap();
+    tests::testFlashMap();
+    //turbAtmos::prettyTitan();
 
     return 0;
 }

@@ -480,12 +480,12 @@ namespace geoOptics {
 
 
 namespace turbAtmos {
-    void Cn2(const double& l0)
+    void Cn2(const double& n0, const double& M, const double& l0)
     {
         Gnuplot gp;
         auto plot = gp.plotGroup();
         VpairXY xy1, xy2;
-        double cn2 = 2.0*sqr(0.000278*sqr(0.0209391))*std::pow(2*nb::pi/l0, 2.0/3.0)/(5.0*0.90274529), H = 8.0;
+        double cn2 = 2.0*sqr(n0*sqr(M))*std::pow(2*nb::pi/l0, 2.0/3.0)/(5.0*0.90274529), H = 8.0;
         funcScaSca hTeo = [&](const double& h){
             return cn2*std::exp(-2*h/H);
         };
@@ -697,18 +697,42 @@ namespace turbAtmos {
         }
     }
 
-    void testFlashMap()
+
+    void prettyTitan()
     {
-        /*flash::FlashOpts fOpts;
+        flash::FlashOpts fOpts;
         fOpts.S = 201;
         fOpts.N = 201;
         fOpts.turb = true;
         fOpts.multi = 0;
         fOpts.lat = 45;
-        //fOpts.lat = 15;
+
         flash::FlashMap f("Planets/Titan.dat", fOpts);
         f();
-        f.plotMap();*/
+        f.plotMap("Results/turbAtmos_TitanObl45Single.png");
+        f.multi = 30;
+        f();
+        f.plotMap("Results/turbAtmos_TitanObl45Multi.png");
+    }
+
+
+
+
+    void runAll()
+    {
+        Cn2();
+        bendingAngle();
+        sphericalCase();
+        oblateCase();
+        prettyTitan();
+    }
+};
+
+namespace waveOptics {
+    void airyRing()
+    {
+        Gnuplot gp1, gp2;
+        auto plot1 = gp1.plotGroup(), plot2 = gp2.plotGroup();
 
         flash::FlashOpts fOpts;
         fOpts.L = 1e8;
@@ -719,6 +743,21 @@ namespace turbAtmos {
         fOpts.lat = 90;
         fOpts.waveOptics = true;
         fOpts.rtOpts.l = 0.1;
+    }
+};
+
+namespace tests {
+    void testFlashMap()
+    {
+        flash::FlashOpts fOpts;
+        fOpts.L = 2e8;
+        fOpts.S = 0.06;
+        fOpts.N = 501;
+        fOpts.turb = false;
+        fOpts.multi = 0;
+        fOpts.lat = 90;
+        fOpts.waveOptics = true;
+        fOpts.rtOpts.l = 6e-7;
         //fOpts.lat = 15;
         flash::FlashMap f("Planets/Earth.dat", fOpts);
         f();

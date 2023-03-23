@@ -31,10 +31,20 @@ namespace geoOptics {
 }
 
 namespace turbAtmos {
-    void Cn2(const double& l0 = 100);
+    void Cn2(const double& n0 = 0.000278, const double& M = 0.0209391, const double& l0 = 100);
     void bendingAngle();
     void sphericalCase();
     void oblateCase();
+    void prettyTitan();
+
+    void runAll();
+};
+
+namespace waveOptics {
+    void airyRing();
+};
+
+namespace tests {
     void testFlashMap();
 };
 

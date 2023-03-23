@@ -166,7 +166,7 @@ namespace ray {
         // check if the solutions are real
         if((det = sqr(c2) - c1*c3) < 0){
             #ifndef NO_CHECK
-                std::cout << (Vector3D){c1, c2, c3} << " " << (double)det << std::endl;
+                std::cout << (Vector3D){(double)c1, (double)c2, (double)c3} << " " << (double)det << std::endl;
                 std::cout << "Warning: Ray doesn't intersect with the sphere\n";
             #endif
             return (Vector3D){NAN,NAN,NAN};
