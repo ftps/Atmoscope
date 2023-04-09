@@ -2,8 +2,7 @@
 
 int main(int argc, char* argv[])
 {
-    tests::testFlashMap();
-    //turbAtmos::prettyTitan();
+    waveOptics::horFluc();
 
     return 0;
 }

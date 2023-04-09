@@ -50,8 +50,7 @@ namespace flash {
             template<typename U>
             void operator+=(const fmap<U>& other);
             void multiAdd(const fmap& other);
-            void normalize();
-            void normalize(double norm);
+            void normalize(const bool& energyConserv);
             double maximumVal() const;
             double maximumDist() const;
 

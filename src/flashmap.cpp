@@ -62,23 +62,23 @@ namespace flash {
     }
 
     template<>
-    void fmap<double>::normalize()
+    void fmap<double>::normalize(const bool& energyConserv)
     {
-        double norm = 0;
-        double h = S/N;
+        double norm = A*sqr(N)/(n*sqr(S));
 
-        for (luint i = 0; i < this->size(); ++i) {
-            for (luint j = 0; j < this->size(); ++j) {
-                norm += this->at(i)[j];
+        if (energyConserv) {
+            double energy = 0;
+            for (luint i = 0; i < this->size(); ++i) {
+                for (luint j = 0; j < this->size(); ++j) {
+                    energy += this->at(i)[j];
+                }
             }
+
+            energy /= n;
+            std::cout << "Incident Energy: " << energy*100.0 << "% of total" << std::endl;
+            norm /= energy;
         }
 
-        this->normalize(A/(sqr(h)*norm));
-    }
-
-    template<typename T>
-    void fmap<T>::normalize(double norm)
-    {
         for(luint i = 0; i < this->size(); ++i){
             for(luint j = 0; j < this->size(); ++j){
                 this->at(i)[j] *= norm;
@@ -369,21 +369,19 @@ namespace flash {
             auxMap.clear();
             auxMap.resize(N, std::vector<U>(N, 0));
 
-            for(const fmap<U>& m : map_t){
+            for (const fmap<U>& m : map_t) {
                 auxMap += m;
             }
             (*this) += auxMap;
-            normalize();
         }
         else {
-            for(const fmap<U>& m : map_t){
+            for (const fmap<U>& m : map_t) {
                 (*this) += m;
             }
-            normalize(A*sqr(N)/(n*sqr(S)));
         }
+
+        normalize(std::is_same<U, complex>::value);
         
-        
-        if (std::is_same<U, complex>::value) normalize();
         auto end = std::chrono::high_resolution_clock::now();
         finalData(end - start);
     }
@@ -411,7 +409,6 @@ namespace flash {
         for(; k <= multi; ++k){
             filename = header + '_' + std::to_string(k) + ".dat";
             if(!fs::exists(filename)){
-                --k;
                 break;
             }
             turbMap->readTurbFile(filename);
@@ -429,6 +426,7 @@ namespace flash {
             multiAux.n += n;
             multiAux.ntot += ntot;
         }
+        --k;
 
         if (k == 0) {
             std::cout << "No atmospheres found . . .\nExiting." << std::endl;
@@ -442,7 +440,12 @@ namespace flash {
         clear();
         resize(N, std::vector<double>(N, 0));
         (*this) += multiAux;
-        normalize(1.0/(4.0*k));
+        // average maps
+        for (luint i = 0; i < size(); ++i) {
+            for (luint j = 0; j < size(); ++j) {
+                at(i)[j] /= 4*k;
+            }
+        }
     }
 
 

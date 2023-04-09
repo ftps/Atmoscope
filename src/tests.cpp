@@ -734,15 +734,206 @@ namespace waveOptics {
         Gnuplot gp1, gp2;
         auto plot1 = gp1.plotGroup(), plot2 = gp2.plotGroup();
 
+        flash::FlashOpts fOpts1, fOpts2;
+        fOpts1.L = 2e8;
+        fOpts1.S = 60;
+        fOpts1.N = 501;
+        fOpts1.turb = false;
+        fOpts1.multi = 0;
+        fOpts1.lat = 90;
+        fOpts1.waveOptics = true;
+        fOpts1.rtOpts.l = 6e-4;
+
+        fOpts2.L = 2e8;
+        fOpts2.S = 12;
+        fOpts2.N = 501;
+        fOpts2.turb = false;
+        fOpts2.multi = 0;
+        fOpts2.lat = 75;
+        fOpts2.waveOptics = true;
+        fOpts2.rtOpts.l = 5e-6;
+
+        std::vector<flash::FlashOpts> fOpt = {fOpts1, fOpts2};
+        std::vector<std::string> fName = {"Spherical", "Oblate"};
+
+        for (uint i = 0; i < fOpt.size(); ++i) {
+            flash::FlashMap f("Planets/Earth.dat", fOpt[i]);
+            f();
+            f.plotMap("Results/waveOptics_Airy" + fName[i] + ".png", true);
+
+            if (i == 0) {
+                Gnuplot gp;
+                auto plot = gp.plotGroup();
+                VpairXY xy;
+                double maxVal = f.maximumVal();
+                double minVal = maxVal;
+
+                for (uint k = 0; k < f.N; ++k) {
+                    xy.emplace_back((k+1)*f.S/f.N - f.S/2, f[(f.N-1)/2][k]);
+                    if (minVal > f[(f.N-1)/2][k]) minVal = f[(f.N-1)/2][k];
+                }
+
+                plot.add_plot1d(xy, "with lines notitle lw 3");
+
+                gp << "set terminal png size 1600,1000 enhanced font 'Verdana,30' enhanced\nset encoding utf8\n";
+                gp << "set termoption enhanced\n";
+                gp << "set output 'Results/waveOptics_AiryHor.png'\n";
+                gp << "set xlabel 'x - km'\n";
+                gp << "set ylabel 'A'\n";
+                gp << "set yrange [" << 0.9*minVal << ":" << 1.1*maxVal << "]\n";
+                gp << "set xrange [" << -f.S/2 << ":" << f.S/2 << "]\n";
+                gp << "set logscale y\n";
+                
+                double dx = f.rtOpts.l*f.L/(2*f.R*f.beta[Y]);
+                bool first = false;
+                for(int k = std::floor(f.S*f.R/(f.rtOpts.l*f.L)); k >= 0; --k) {
+                    gp << "set arrow from " << k*dx << "," << minVal << " to " << k*dx << "," << 1.1*maxVal << " nohead linecolor \"red\"\n";
+                    gp << "set arrow from " << -k*dx << "," << minVal << " to " << -k*dx << "," << 1.1*maxVal << " nohead linecolor \"red\"\n";
+                    if(first) {
+                        gp << "set arrow from " << (k+0.5)*dx << "," << minVal << " to " << (k+0.5)*dx << "," << 1.1*maxVal << " nohead linecolor \"black\"\n";
+                        gp << "set arrow from " << -(k+0.5)*dx << "," << minVal << " to " << -(k+0.5)*dx << "," << 1.1*maxVal << " nohead linecolor \"black\"\n";
+                    }
+                    else first = true;
+                }
+
+                gp << plot;
+            }
+            break;
+        }
+    }
+
+    void sphericalCase()
+    {
+        flash::FlashOpts fOptsE, fOptsT;
+        fOptsE.S = 2.01;
+        fOptsE.N = 201;
+        fOptsE.turb = true;
+        fOptsE.lat = 90;
+        fOptsE.waveOptics = true;
+        fOptsE.rtOpts.l = 700e-12;
+        fOptsT.S = 40.2;
+        fOptsT.N = 201;
+        fOptsT.turb = true;
+        fOptsT.lat = 90;
+        fOptsT.waveOptics = true;
+        fOptsT.rtOpts.l = 700e-12;
+        std::vector<flash::FlashOpts> opts = {fOptsE, fOptsT};
+        std::vector<std::string> pla = {"Earth", "Titan"};
+
+        for(uint i = 0; i < pla.size(); ++i){
+            flash::FlashMap f("Planets/" + pla[i] + ".dat", opts[i]);
+            f();
+            f.plotMap("Results/waveOptics_" + pla[i] + "Single.png");
+            f.multi = 30;
+            f();
+            f.plotMap("Results/waveOptics_" + pla[i] + "Multi.png");
+        }
+    }
+
+    void oblateCase()
+    {
+        flash::FlashOpts fOptsE, fOptsT;
+        fOptsE.S = 16.08;
+        fOptsE.N = 201;
+        fOptsE.turb = true;
+        fOptsE.lat = 75;
+        fOptsE.waveOptics = true;
+        fOptsE.rtOpts.l = 700e-12;
+        fOptsT.S = 40.2;
+        fOptsT.N = 201;
+        fOptsT.turb = true;
+        fOptsT.lat = 75;
+        fOptsT.waveOptics = true;
+        fOptsT.rtOpts.l = 700e-12;
+        std::vector<flash::FlashOpts> opts = {fOptsE, fOptsT};
+        std::vector<std::string> pla = {"Earth", "Titan"};
+
+        for(uint i = 0; i < pla.size(); ++i){
+            flash::FlashMap f("Planets/" + pla[i] + ".dat", opts[i]);
+            f();
+            f.plotMap("Results/waveOptics_" + pla[i] + "OblSingle.png");
+            f.multi = 30;
+            f();
+            f.plotMap("Results/waveOptics_" + pla[i] + "OblMulti.png");
+        }
+    }
+
+
+    void prettyTitan()
+    {
         flash::FlashOpts fOpts;
-        fOpts.L = 1e8;
-        fOpts.S = 50;
-        fOpts.N = 501;
+        fOpts.S = 201;
+        fOpts.N = 601;
         fOpts.turb = false;
         fOpts.multi = 0;
-        fOpts.lat = 90;
+        fOpts.lat = 45;
+
+        flash::FlashMap f("Planets/Titan.dat", fOpts);
+        f();
+        f.plotMap("Results/turbAtmos_TitanObl45Ideal.png");
+        return;
+        f.turb = true;
         fOpts.waveOptics = true;
-        fOpts.rtOpts.l = 0.1;
+        fOpts.rtOpts.l = 700e-12;
+        f();
+        f.plotMap("Results/waveOptics_TitanObl45Single.png");
+        f.multi = 30;
+        f();
+        f.plotMap("Results/waveOptics_TitanObl45Multi.png");
+    }
+
+    void horFluc()
+    {
+        Gnuplot gp;
+        auto plot = gp.plotGroup();
+        VpairXY xy;
+        double maxVal = 0;
+
+        flash::FlashOpts fOptsE;
+        fOptsE.S = 2.01;
+        fOptsE.N = 201;
+        fOptsE.turb = true;
+        fOptsE.lat = 90;
+        fOptsE.waveOptics = false;
+        fOptsE.rtOpts.l = 700e-12;
+        fOptsE.multi = 30;
+
+        for (uint i = 0; i < 2; ++i) {
+            flash::FlashMap f("Planets/Earth.dat", fOptsE);
+            f();
+
+            xy.clear();
+
+            for (uint k = 0; k < f.size(); ++k) {
+                xy.emplace_back((k+1)*f.S/f.N - f.S/2, f[(f.N-1)/2][k]);
+                if (maxVal < f[(f.N-1)/2][k]) maxVal = f[(f.N-1)/2][k];
+            }
+
+            plot.add_plot1d(xy, "with lines title '" + ((i) ? std::string("Wave Optics") : std::string("Pure Turbulence")) + "' lw 3");
+
+            fOptsE.waveOptics = true;
+        }
+
+        gp << "set terminal png size 1600,1000 enhanced font 'Verdana,30' enhanced\nset encoding utf8\n";
+        gp << "set termoption enhanced\n";
+        gp << "set output 'Results/waveOptics_horBright.png'\n";
+        gp << "set xlabel 'x - km'\n";
+        gp << "set ylabel 'A'\n";
+        //gp << "set yrange [0:" << std::to_string(1.2*maxVal) << "]\n";
+        gp << "set xrange [-1:1]\n";
+        gp << plot;
+    }
+
+
+
+
+    void runAll()
+    {
+        airyRing();
+        sphericalCase();
+        oblateCase();
+        prettyTitan();
+        horFluc();
     }
 };
 
@@ -751,16 +942,16 @@ namespace tests {
     {
         flash::FlashOpts fOpts;
         fOpts.L = 2e8;
-        fOpts.S = 0.06;
+        fOpts.S = 12;
         fOpts.N = 501;
         fOpts.turb = false;
         fOpts.multi = 0;
-        fOpts.lat = 90;
+        fOpts.lat = 75;
         fOpts.waveOptics = true;
-        fOpts.rtOpts.l = 6e-7;
+        fOpts.rtOpts.l = 5e-6;
         //fOpts.lat = 15;
         flash::FlashMap f("Planets/Earth.dat", fOpts);
         f();
-        f.plotMap("", true);
+        f.plotMap("");
     }
 };

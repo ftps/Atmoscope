@@ -17,6 +17,9 @@ namespace tests {
     void testOblate();
 
     void runAll();
+
+
+    void testFlashMap();
 };
 
 namespace geoOptics {
@@ -42,11 +45,12 @@ namespace turbAtmos {
 
 namespace waveOptics {
     void airyRing();
-};
+    void sphericalCase();
+    void oblateCase();
+    void prettyTitan();
+    void horFluc();
 
-namespace tests {
-    void testFlashMap();
+    void runAll();
 };
-
 
 #endif
